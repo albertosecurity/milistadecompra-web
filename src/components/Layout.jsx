@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { getPendingCount } from '../services/api'
 
 export default function Layout() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [pendingCount, setPendingCount] = useState(0)
 
@@ -16,15 +16,20 @@ export default function Layout() {
     return () => clearInterval(interval)
   }, [])
 
-  const handleLogout = () => { logout(); navigate('/login') }
-
   return (
     <div>
       <nav className="navbar">
-        <h1>🛒 Mi Lista de Compra</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/icon-192.png" alt="Logo" style={{ width: 32, height: 32, borderRadius: 8 }} />
+          <h1>Mi Lista de Compra</h1>
+        </div>
         <div className="navbar-actions">
-          <span style={{fontSize:'0.85rem', opacity:0.85}}>Hola, {user?.name?.split(' ')[0]}</span>
-          <button className="icon-btn" onClick={handleLogout} title="Cerrar sesión">⎋</button>
+          <span style={{ fontSize: '0.85rem', opacity: 0.85 }}>
+            {user?.name?.split(' ')[0]}
+          </span>
+          <button className="icon-btn" onClick={() => navigate('/configuracion')} title="Configuración">
+            ⚙️
+          </button>
         </div>
       </nav>
 
@@ -41,12 +46,18 @@ export default function Layout() {
           <span className="icon">🏪</span>
           Productos
         </NavLink>
-        <NavLink to="/pendientes" style={{position:'relative'}}>
+        <NavLink to="/pendientes" style={{ position: 'relative' }}>
           <span className="icon">🚩</span>
           {pendingCount > 0 && (
-            <span className="badge" style={{position:'absolute', top:4, right:12}}>{pendingCount}</span>
+            <span className="badge" style={{ position: 'absolute', top: 4, right: 12 }}>
+              {pendingCount}
+            </span>
           )}
           Pendientes
+        </NavLink>
+        <NavLink to="/configuracion">
+          <span className="icon">⚙️</span>
+          Config
         </NavLink>
       </nav>
     </div>
