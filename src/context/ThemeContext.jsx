@@ -7,6 +7,7 @@ const THEMES = {
   orange: { primary: '#8B5000', primaryLight: '#FFDDB3', primaryDark: '#5C3400', bg: '#FFF8F0', name: 'Naranja' },
   red:    { primary: '#9B1B30', primaryLight: '#FFD9DE', primaryDark: '#680020', bg: '#FFF0F1', name: 'Rojo' },
   green:  { primary: '#1B6B3A', primaryLight: '#C8F0D8', primaryDark: '#0A4724', bg: '#F0FBF4', name: 'Verde' },
+  pink: { primary: '#8B1A5C', primaryLight: '#FFD7EF', primaryDark: '#5C0F3C', bg: '#FFF0F8', name: 'Rosado' },
 }
 
 const FONTS = {
