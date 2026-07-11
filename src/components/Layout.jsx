@@ -21,7 +21,7 @@ export default function Layout() {
       <nav className="navbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <img src="/icon-192.png" alt="Logo" style={{ width: 32, height: 32, borderRadius: 8 }} />
-          <h1>Mi Lista de Compra</h1>
+          <h1>Yepar Check</h1>
         </div>
         <div className="navbar-actions">
           <span style={{ fontSize: '0.85rem', opacity: 0.85 }}>
