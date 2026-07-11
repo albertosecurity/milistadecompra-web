@@ -24,7 +24,7 @@ export default function LoginPage() {
       <div style={{width:'100%', maxWidth:380}}>
         <div style={{textAlign:'center', marginBottom:32}}>
           <img src='/icon-192.png' alt='Logo' style={{width:80,height:80,marginBottom:4}} />
-          <h1 style={{fontSize:'1.6rem', fontWeight:800, color:'#167064'}}>Mi Lista de Compra</h1>
+          <h1 style={{fontSize:'1.6rem', fontWeight:800, color:'#167064'}}>Yepar Check</h1>
           <p style={{color:'#79747E', marginTop:6}}>Organiza tus compras fácilmente</p>
         </div>
 
