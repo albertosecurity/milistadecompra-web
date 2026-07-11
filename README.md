@@ -1,4 +1,4 @@
-# Mi Lista de Compra — Web PWA
+# Yepar Check — Web PWA
 
 App web para gestión de listas de compras conectada a Railway backend.
 
