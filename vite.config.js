@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'favicon-16.png', 'favicon-32.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'Mi Lista de Compra',
-        short_name: 'ListaCompra',
+        name: 'Yepar Check',
+        short_name: 'Yepar Check',
         description: 'Organiza tus listas de compras fácilmente',
         theme_color: '#167064',
         background_color: '#ffffff',
