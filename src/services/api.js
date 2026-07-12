@@ -47,7 +47,7 @@ export const updateProduct = (id, data) => api.put('/products/' + id, data)
 export const deleteProduct = (id) => api.delete('/products/' + id)
 export const getCategories = () => api.get('/products/categories')
 
-export const getLists = () => api.get('/lists/')
+export const getLists = (listType) => api.get('/lists/', { params: { list_type: listType || undefined } })
 export const createList = (data) => api.post('/lists/', data)
 export const getListDetail = (id) => api.get('/lists/' + id)
 export const updateList = (id, data) => api.put('/lists/' + id, data)
