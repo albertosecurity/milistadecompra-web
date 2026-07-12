@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getListDetail, getProducts, addItem, updateItem, removeItem } from '../services/api'
 
+const formatCLP = (n) => '$' + Math.round(n || 0).toLocaleString('es-CL')
+
 export default function ListDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -13,8 +15,13 @@ export default function ListDetailPage() {
   const [selected, setSelected] = useState(null)
   const [qty, setQty] = useState('1')
   const [unit, setUnit] = useState('unidad')
+  const [amount, setAmount] = useState('')
   const [showPendingFor, setShowPendingFor] = useState(null)
   const [pendingNote, setPendingNote] = useState('')
+  const [editingAmountFor, setEditingAmountFor] = useState(null)
+  const [amountDraft, setAmountDraft] = useState('')
+
+  const isGastos = list?.list_type === 'gastos'
 
   const load = () => getListDetail(id).then(r => setList(r.data)).finally(() => setLoading(false))
 
@@ -25,8 +32,11 @@ export default function ListDetailPage() {
 
   const handleAdd = async () => {
     if (!selected) return
-    await addItem(id, { product_id: selected.id, quantity: parseFloat(qty)||1, unit })
-    setShowAdd(false); setSelected(null); setSearch(''); setQty('1'); setUnit('unidad')
+    const payload = isGastos
+      ? { product_id: selected.id, quantity: 1, unit: 'pago', amount: amount ? parseFloat(amount) : null }
+      : { product_id: selected.id, quantity: parseFloat(qty)||1, unit }
+    await addItem(id, payload)
+    setShowAdd(false); setSelected(null); setSearch(''); setQty('1'); setUnit('unidad'); setAmount('')
     load()
   }
 
@@ -48,8 +58,19 @@ export default function ListDetailPage() {
   }
 
   const handleRemove = async (itemId) => {
-    if (!confirm('¿Quitar este producto?')) return
+    if (!confirm(isGastos ? '¿Quitar este pago?' : '¿Quitar este producto?')) return
     await removeItem(id, itemId)
+    load()
+  }
+
+  const openAmountEdit = (item) => {
+    setEditingAmountFor(item)
+    setAmountDraft(item.amount != null ? String(item.amount) : '')
+  }
+
+  const saveAmountEdit = async () => {
+    await updateItem(id, editingAmountFor.id, { amount: amountDraft ? parseFloat(amountDraft) : null })
+    setEditingAmountFor(null); setAmountDraft('')
     load()
   }
 
@@ -66,6 +87,7 @@ export default function ListDetailPage() {
   const checked = list?.items?.filter(i => i.is_checked).length || 0
   const pending = list?.items?.filter(i => i.is_pending).length || 0
   const progress = total > 0 ? (checked / total) * 100 : 0
+  const totalAmount = list?.items?.reduce((sum, i) => sum + (i.amount || 0), 0) || 0
 
   return (
     <div className="page">
@@ -73,8 +95,16 @@ export default function ListDetailPage() {
         <button onClick={() => navigate(-1)} style={{background:'none', border:'none', fontSize:'1.3rem', cursor:'pointer'}}>←</button>
         <div style={{flex:1}}>
           <h2 style={{fontSize:'1.05rem', fontWeight:700}}>{list?.name}</h2>
-          <div className="text-sm text-muted">{checked}/{total} comprados {pending > 0 && <span className="text-error">· {pending} pendientes</span>}</div>
+          <div className="text-sm text-muted">
+            {checked}/{total} {isGastos ? 'pagados' : 'comprados'} {pending > 0 && <span className="text-error">· {pending} pendientes</span>}
+          </div>
         </div>
+        {isGastos && (
+          <div style={{textAlign:'right'}}>
+            <div className="text-sm text-muted">Total gastado</div>
+            <div style={{fontWeight:800, fontSize:'1.1rem', color:'#167064'}}>{formatCLP(totalAmount)}</div>
+          </div>
+        )}
       </div>
 
       {total > 0 && (
@@ -85,15 +115,17 @@ export default function ListDetailPage() {
 
       {Object.keys(grouped).length === 0 && (
         <div className="empty">
-          <div className="emoji">🛒</div>
-          <h3>Lista vacía</h3>
-          <p>Toca + para agregar productos</p>
+          <div className="emoji">{isGastos ? '💰' : '🛒'}</div>
+          <h3>{isGastos ? 'Sin pagos registrados' : 'Lista vacía'}</h3>
+          <p>Toca + para agregar {isGastos ? 'un pago' : 'productos'}</p>
         </div>
       )}
 
       {Object.entries(grouped).map(([cat, items]) => (
         <div key={cat} style={{marginBottom:16}}>
-          <div style={{fontSize:'0.78rem', fontWeight:700, color:'#6750A4', textTransform:'uppercase', letterSpacing:1, marginBottom:6}}>{cat}</div>
+          {!isGastos && (
+            <div style={{fontSize:'0.78rem', fontWeight:700, color:'#6750A4', textTransform:'uppercase', letterSpacing:1, marginBottom:6}}>{cat}</div>
+          )}
           {items.map(item => (
             <div key={item.id} className={'list-item-card' + (item.is_checked ? ' checked' : '') + (item.is_pending ? ' pending' : '')}>
               <div className={'checkbox' + (item.is_checked ? ' checked' : '')} onClick={() => handleCheck(item)}>
@@ -103,7 +135,12 @@ export default function ListDetailPage() {
                 <div style={{fontWeight:600, fontSize:'0.95rem', textDecoration: item.is_checked ? 'line-through' : 'none'}}>
                   {item.product_name}
                 </div>
-                <div className="text-sm text-muted">{item.quantity} {item.unit}</div>
+                {isGastos
+                  ? <div className="text-sm" style={{color:'#167064', fontWeight:600, cursor:'pointer'}} onClick={() => openAmountEdit(item)}>
+                      {item.amount != null ? formatCLP(item.amount) : 'Toca para ingresar monto'}
+                    </div>
+                  : <div className="text-sm text-muted">{item.quantity} {item.unit}</div>
+                }
                 {item.is_pending && (
                   <div style={{fontSize:'0.78rem', color:'#B3261E', display:'flex', alignItems:'center', gap:4, marginTop:2}}>
                     🚩 {item.pending_notes || 'No disponible'}
@@ -111,7 +148,7 @@ export default function ListDetailPage() {
                 )}
               </div>
               <div className="flex gap-2">
-                {!item.is_checked && (
+                {!item.is_checked && !isGastos && (
                   item.is_pending
                     ? <button className="btn btn-ghost btn-sm" onClick={() => handleUnpending(item)} style={{fontSize:'0.75rem'}}>Quitar 🚩</button>
                     : <button onClick={() => { setShowPendingFor(item); setPendingNote('') }}
@@ -130,7 +167,7 @@ export default function ListDetailPage() {
       {showAdd && (
         <div className="modal-overlay" onClick={() => setShowAdd(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2>Agregar producto</h2>
+            <h2>{isGastos ? 'Agregar pago' : 'Agregar producto'}</h2>
             <input className="input mb-3" placeholder="🔍 Buscar producto..." value={search}
               onChange={e => setSearch(e.target.value)} autoFocus />
             <div style={{maxHeight:220, overflowY:'auto', marginBottom:12}}>
@@ -156,20 +193,28 @@ export default function ListDetailPage() {
             {selected && (
               <div style={{background:'#F6F2FA', borderRadius:8, padding:12, marginBottom:12}}>
                 <div style={{fontWeight:600, marginBottom:8}}>{selected.name}</div>
-                <div className="flex gap-2">
-                  <div style={{flex:1}}>
-                    <label className="text-sm text-muted">Cantidad</label>
-                    <input className="input mt-2" type="number" min="0.1" step="0.1" value={qty}
-                      onChange={e => setQty(e.target.value)} />
+                {isGastos ? (
+                  <div>
+                    <label className="text-sm text-muted">Monto ($)</label>
+                    <input className="input mt-2" type="number" min="0" step="1" placeholder="Ej: 15000" value={amount}
+                      onChange={e => setAmount(e.target.value)} autoFocus />
                   </div>
-                  <div style={{flex:1}}>
-                    <label className="text-sm text-muted">Unidad</label>
-                    <select className="input mt-2" value={unit} onChange={e => setUnit(e.target.value)}>
-                      {['unidad','kg','g','litro','ml','paquete','caja','bolsa','docena'].map(u =>
-                        <option key={u} value={u}>{u}</option>)}
-                    </select>
+                ) : (
+                  <div className="flex gap-2">
+                    <div style={{flex:1}}>
+                      <label className="text-sm text-muted">Cantidad</label>
+                      <input className="input mt-2" type="number" min="0.1" step="0.1" value={qty}
+                        onChange={e => setQty(e.target.value)} />
+                    </div>
+                    <div style={{flex:1}}>
+                      <label className="text-sm text-muted">Unidad</label>
+                      <select className="input mt-2" value={unit} onChange={e => setUnit(e.target.value)}>
+                        {['unidad','kg','g','litro','ml','paquete','caja','bolsa','docena'].map(u =>
+                          <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
             <div className="flex gap-2">
@@ -190,6 +235,20 @@ export default function ListDetailPage() {
             <div className="flex gap-2">
               <button className="btn btn-ghost w-full" onClick={() => setShowPendingFor(null)}>Cancelar</button>
               <button className="btn btn-danger w-full" onClick={handlePending}>Marcar pendiente</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingAmountFor && (
+        <div className="modal-overlay" onClick={() => setEditingAmountFor(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h2>Monto de "{editingAmountFor.product_name}"</h2>
+            <input className="input mb-3" type="number" min="0" step="1" placeholder="Ej: 15000"
+              value={amountDraft} onChange={e => setAmountDraft(e.target.value)} autoFocus />
+            <div className="flex gap-2">
+              <button className="btn btn-ghost w-full" onClick={() => setEditingAmountFor(null)}>Cancelar</button>
+              <button className="btn btn-primary w-full" onClick={saveAmountEdit}>Guardar</button>
             </div>
           </div>
         </div>
