@@ -4,7 +4,11 @@ import { getLists, createList, deleteList, copyList } from '../services/api'
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
+// Formatea un numero como pesos chilenos, ej: 15000 -> "$15.000"
+const formatCLP = (n) => '$' + Math.round(n || 0).toLocaleString('es-CL')
+
 export default function ListsPage() {
+  const [tab, setTab] = useState('compras') // 'compras' | 'gastos'
   const [lists, setLists] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -12,12 +16,20 @@ export default function ListsPage() {
   const [form, setForm] = useState({ name: '', month: '', year: new Date().getFullYear() })
   const navigate = useNavigate()
 
-  const load = () => getLists().then(r => setLists(r.data)).finally(() => setLoading(false))
-  useEffect(() => { load() }, [])
+  const load = () => {
+    setLoading(true)
+    getLists(tab).then(r => setLists(r.data)).finally(() => setLoading(false))
+  }
+  useEffect(() => { load() }, [tab])
 
   const submit = async e => {
     e.preventDefault()
-    await createList({ name: form.name, month: form.month ? parseInt(form.month) : null, year: parseInt(form.year) })
+    await createList({
+      name: form.name,
+      month: form.month ? parseInt(form.month) : null,
+      year: parseInt(form.year),
+      list_type: tab
+    })
     setShowModal(false)
     setForm({ name: '', month: '', year: new Date().getFullYear() })
     load()
@@ -31,15 +43,32 @@ export default function ListsPage() {
   }
 
   const handleCopy = async (sourceId, name, month, year) => {
-    await copyList(sourceId, { name, month: month ? parseInt(month) : null, year: parseInt(year) })
+    await copyList(sourceId, { name, month: month ? parseInt(month) : null, year: parseInt(year), list_type: tab })
     setShowCopyModal(null)
     load()
   }
 
+  const isGastos = tab === 'gastos'
+
   return (
     <div className="page">
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', margin:'16px 0 12px'}}>
-        <h2 style={{fontSize:'1.1rem', fontWeight:700}}>Mis Listas</h2>
+      <div className="tabs" style={{display:'flex', gap:8, margin:'16px 0 12px'}}>
+        <button
+          className={'btn btn-sm ' + (tab === 'compras' ? 'btn-primary' : 'btn-ghost')}
+          style={{flex:1}}
+          onClick={() => setTab('compras')}>
+          🛒 Listas de compra
+        </button>
+        <button
+          className={'btn btn-sm ' + (tab === 'gastos' ? 'btn-primary' : 'btn-ghost')}
+          style={{flex:1}}
+          onClick={() => setTab('gastos')}>
+          💰 Control de gastos
+        </button>
+      </div>
+
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', margin:'4px 0 12px'}}>
+        <h2 style={{fontSize:'1.1rem', fontWeight:700}}>{isGastos ? 'Mis Gastos' : 'Mis Listas'}</h2>
         <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}>+ Nueva</button>
       </div>
 
@@ -47,9 +76,9 @@ export default function ListsPage() {
 
       {!loading && lists.length === 0 && (
         <div className="empty">
-          <div className="emoji">📋</div>
-          <h3>No tienes listas aún</h3>
-          <p>Toca "+ Nueva" para crear tu primera lista</p>
+          <div className="emoji">{isGastos ? '💰' : '📋'}</div>
+          <h3>{isGastos ? 'No tienes controles de gasto aún' : 'No tienes listas aún'}</h3>
+          <p>Toca "+ Nueva" para crear {isGastos ? 'tu primer control mensual' : 'tu primera lista'}</p>
         </div>
       )}
 
@@ -62,7 +91,12 @@ export default function ListsPage() {
               {list.month && <div style={{fontSize:'0.8rem', color:'#6750A4', marginTop:2}}>
                 {MONTHS[list.month-1]} {list.year}
               </div>}
-              <div className="text-sm text-muted mt-2">{list.item_count} productos · {list.pending_count > 0 ? <span className="text-error">{list.pending_count} pendientes</span> : 'sin pendientes'}</div>
+              {isGastos
+                ? <div className="text-sm text-muted mt-2">
+                    {list.item_count} pagos · <strong style={{color:'#167064'}}>{formatCLP(list.total_amount)}</strong> gastado
+                  </div>
+                : <div className="text-sm text-muted mt-2">{list.item_count} productos · {list.pending_count > 0 ? <span className="text-error">{list.pending_count} pendientes</span> : 'sin pendientes'}</div>
+              }
             </div>
             <div className="flex gap-2" onClick={e => e.stopPropagation()}>
               <button className="btn btn-ghost btn-sm" onClick={() => setShowCopyModal(list)}>Copiar</button>
@@ -75,9 +109,9 @@ export default function ListsPage() {
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h2>Nueva Lista</h2>
+            <h2>{isGastos ? 'Nuevo Control de Gastos' : 'Nueva Lista'}</h2>
             <form onSubmit={submit} style={{display:'flex', flexDirection:'column', gap:12}}>
-              <input className="input" placeholder="Nombre de la lista" value={form.name}
+              <input className="input" placeholder={isGastos ? 'Nombre (ej: Pagos mensuales)' : 'Nombre de la lista'} value={form.name}
                 onChange={e => setForm(f=>({...f,name:e.target.value}))} required />
               <div className="flex gap-2">
                 <select className="input" value={form.month} onChange={e => setForm(f=>({...f,month:e.target.value}))}>
@@ -110,7 +144,7 @@ function CopyModal({ list, onCopy, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <h2>Copiar Lista</h2>
-        <p className="text-sm text-muted mb-3">Copia "{list.name}" con todos sus productos</p>
+        <p className="text-sm text-muted mb-3">Copia "{list.name}" con todos sus productos{list.list_type === 'gastos' ? ' (sin los montos, para que ingreses los del mes nuevo)' : ''}</p>
         <div style={{display:'flex', flexDirection:'column', gap:12}}>
           <input className="input" placeholder="Nombre" value={form.name}
             onChange={e => setForm(f=>({...f,name:e.target.value}))} />
